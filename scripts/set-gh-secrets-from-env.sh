@@ -35,6 +35,8 @@ fi
 
 # Skip strict auth check; gh secret set will fail if not authenticated.
 
+failures=0
+
 while IFS= read -r line || [[ -n "$line" ]]; do
   trimmed="${line#"${line%%[![:space:]]*}"}"
   trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
@@ -61,9 +63,9 @@ while IFS= read -r line || [[ -n "$line" ]]; do
   value="${value#"${value%%[![:space:]]*}"}"
   value="${value%"${value##*[![:space:]]}"}"
 
-  if [[ "$value" == \"*\" && "$value" == *\" ]]; then
+  if [[ "$value" == \"*\" ]]; then
     value="${value:1:${#value}-2}"
-  elif [[ "$value" == \'*\' && "$value" == *\' ]]; then
+  elif [[ "$value" == \'*\' ]]; then
     value="${value:1:${#value}-2}"
   fi
 
@@ -73,5 +75,12 @@ while IFS= read -r line || [[ -n "$line" ]]; do
   fi
 
   echo "Setting secret: $key"
-  gh secret set "$key" --body "$value" -R "$REPO"
+  if ! printf '%s' "$value" | gh secret set "$key" -R "$REPO"; then
+    echo "Failed to set secret: $key" >&2
+    failures=$((failures + 1))
+  fi
 done < "$ENV_FILE"
+
+if [[ "$failures" -gt 0 ]]; then
+  exit 1
+fi

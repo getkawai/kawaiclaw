@@ -6,12 +6,6 @@ on:
       - "**"
   pull_request:
 
-env:
-  GHCR_REGISTRY: ghcr.io
-  GHCR_IMAGE_NAME: ${{ github.repository_owner }}/kawaiclaw
-  DOCKERHUB_REGISTRY: docker.io
-  DOCKERHUB_IMAGE_NAME: ${{ vars.DOCKERHUB_REPOSITORY }}
-
 permissions:
   contents: read
 
