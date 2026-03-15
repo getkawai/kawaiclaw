@@ -91,7 +91,7 @@ func copyEmbeddedToTarget(targetDir string) error {
 
 		// Write file
 		if err := os.WriteFile(targetPath, data, 0o644); err != nil {
-			return fmt.Errorf("Failed to write file %s: %w", targetPath, err)
+			return fmt.Errorf("failed to write file %s: %w", targetPath, err)
 		}
 
 		return nil
