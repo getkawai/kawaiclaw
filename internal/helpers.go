@@ -9,21 +9,43 @@ import (
 
 const Logo = "🦞"
 
-// GetPicoclawHome returns the picoclaw home directory.
-// Priority: $PICOCLAW_HOME > ~/.picoclaw
-func GetPicoclawHome() string {
+// GetKawaiclawHome returns the Kawaiclaw home directory.
+// Priority: $KAWAICLAW_HOME > $PICOCLAW_HOME > ~/.kawaiclaw
+func GetKawaiclawHome() string {
+	if home := os.Getenv("KAWAICLAW_HOME"); home != "" {
+		return home
+	}
 	if home := os.Getenv("PICOCLAW_HOME"); home != "" {
 		return home
 	}
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".picoclaw")
+	return filepath.Join(home, ".kawaiclaw")
 }
 
 func GetConfigPath() string {
+	if configPath := os.Getenv("KAWAICLAW_CONFIG"); configPath != "" {
+		return configPath
+	}
 	if configPath := os.Getenv("PICOCLAW_CONFIG"); configPath != "" {
 		return configPath
 	}
-	return filepath.Join(GetPicoclawHome(), "config.json")
+	if home := os.Getenv("KAWAICLAW_HOME"); home != "" {
+		return filepath.Join(home, "config.json")
+	}
+	if home := os.Getenv("PICOCLAW_HOME"); home != "" {
+		return filepath.Join(home, "config.json")
+	}
+
+	home, _ := os.UserHomeDir()
+	defaultConfig := filepath.Join(home, ".kawaiclaw", "config.json")
+	if _, err := os.Stat(defaultConfig); err == nil {
+		return defaultConfig
+	}
+	legacyConfig := filepath.Join(home, ".picoclaw", "config.json")
+	if _, err := os.Stat(legacyConfig); err == nil {
+		return legacyConfig
+	}
+	return defaultConfig
 }
 
 func LoadConfig() (*config.Config, error) {

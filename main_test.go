@@ -12,14 +12,14 @@ import (
 	"github.com/sipeed/picoclaw/pkg/config"
 )
 
-func TestNewPicoclawCommand(t *testing.T) {
-	cmd := NewPicoclawCommand()
+func TestNewKawaiclawCommand(t *testing.T) {
+	cmd := NewKawaiclawCommand()
 
 	require.NotNil(t, cmd)
 
-	short := fmt.Sprintf("%s picoclaw - Personal AI Assistant v%s\n\n", internal.Logo, config.GetVersion())
+	short := fmt.Sprintf("%s kawaiclaw - Personal AI Assistant v%s\n\n", internal.Logo, config.GetVersion())
 
-	assert.Equal(t, "picoclaw", cmd.Use)
+	assert.Equal(t, "kawaiclaw", cmd.Use)
 	assert.Equal(t, short, cmd.Short)
 
 	assert.True(t, cmd.HasSubCommands())

@@ -1,8 +1,8 @@
-// PicoClaw - Ultra-lightweight personal AI agent
+// KawaiClaw - Ultra-lightweight personal AI agent
 // Inspired by and based on nanobot: https://github.com/HKUDS/nanobot
 // License: MIT
 //
-// Copyright (c) 2026 PicoClaw contributors
+// Copyright (c) 2026 KawaiClaw contributors
 
 package main
 
@@ -26,13 +26,13 @@ import (
 	"github.com/sipeed/picoclaw/pkg/config"
 )
 
-func NewPicoclawCommand() *cobra.Command {
-	short := fmt.Sprintf("%s picoclaw - Personal AI Assistant v%s\n\n", internal.Logo, config.GetVersion())
+func NewKawaiclawCommand() *cobra.Command {
+	short := fmt.Sprintf("%s kawaiclaw - Personal AI Assistant v%s\n\n", internal.Logo, config.GetVersion())
 
 	cmd := &cobra.Command{
-		Use:     "picoclaw",
+		Use:     "kawaiclaw",
 		Short:   short,
-		Example: "picoclaw version",
+		Example: "kawaiclaw version",
 	}
 
 	cmd.AddCommand(
@@ -66,7 +66,7 @@ const (
 
 func main() {
 	fmt.Printf("%s", banner)
-	cmd := NewPicoclawCommand()
+	cmd := NewKawaiclawCommand()
 	if err := cmd.Execute(); err != nil {
 		os.Exit(1)
 	}

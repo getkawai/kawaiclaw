@@ -37,7 +37,7 @@ func TestInstallCommandArgs(t *testing.T) {
 	}{
 		{
 			name:        "no registry, one arg",
-			args:        []string{"sipeed/picoclaw-skills/weather"},
+			args:        []string{"getkawai/kawaiclaw-skills/weather"},
 			registry:    "",
 			expectError: false,
 		},
