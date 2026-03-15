@@ -2,6 +2,7 @@ package skills
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -133,12 +134,13 @@ func skillsRemoveCmd(installer *skills.SkillInstaller, skillName string) {
 	fmt.Printf("✓ Skill '%s' removed successfully!\n", skillName)
 }
 
-func skillsInstallBuiltinCmd(workspace string) {
+func skillsInstallBuiltinCmd(workspace string) error {
 	globalDir := filepath.Dir(internal.GetConfigPath())
 	builtinSkillsDir := GetBuiltinSkillsDir(globalDir)
 	workspaceSkillsDir := filepath.Join(workspace, "skills")
 
 	fmt.Printf("Copying builtin skills to workspace...\n")
+	var joinedErr error
 
 	skillsToInstall := []string{
 		"weather",
@@ -153,21 +155,29 @@ func skillsInstallBuiltinCmd(workspace string) {
 
 		if _, err := os.Stat(builtinPath); err != nil {
 			fmt.Printf("⊘ Builtin skill '%s' not found: %v\n", skillName, err)
+			joinedErr = errors.Join(joinedErr, err)
 			continue
 		}
 
 		if err := os.MkdirAll(workspacePath, 0o755); err != nil {
 			fmt.Printf("✗ Failed to create directory for %s: %v\n", skillName, err)
+			joinedErr = errors.Join(joinedErr, err)
 			continue
 		}
 
 		if err := copyDirectory(builtinPath, workspacePath); err != nil {
 			fmt.Printf("✗ Failed to copy %s: %v\n", skillName, err)
+			joinedErr = errors.Join(joinedErr, err)
 		}
+	}
+
+	if joinedErr != nil {
+		return joinedErr
 	}
 
 	fmt.Println("\n✓ All builtin skills installed!")
 	fmt.Println("Now you can use them in your workspace.")
+	return nil
 }
 
 func skillsListBuiltinCmd() {
@@ -207,7 +217,9 @@ func skillsListBuiltinCmd() {
 						if strings.Contains(firstLine, "description:") {
 							descLine := strings.Index(content[idx:], "\n")
 							if descLine > 0 {
-								description = strings.TrimSpace(content[idx+descLine : idx+descLine])
+								start := idx + 1
+								end := idx + descLine
+								description = strings.TrimSpace(content[start:end])
 							}
 						}
 					}
@@ -305,11 +317,14 @@ func copyDirectory(src, dst string) error {
 		if err != nil {
 			return err
 		}
-		defer func() {
-			_ = dstFile.Close()
-		}()
 
-		_, err = io.Copy(dstFile, srcFile)
-		return err
+		if _, err = io.Copy(dstFile, srcFile); err != nil {
+			_ = dstFile.Close()
+			return err
+		}
+		if err := dstFile.Close(); err != nil {
+			return err
+		}
+		return nil
 	})
 }

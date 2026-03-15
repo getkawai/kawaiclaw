@@ -79,10 +79,15 @@ func agentCmd(message, sessionKey, model string, debug bool) error {
 
 func interactiveMode(agentLoop *agent.AgentLoop, sessionKey string) {
 	prompt := fmt.Sprintf("%s You: ", internal.Logo)
+	legacyHistory := filepath.Join(os.TempDir(), ".picoclaw_history")
+	historyFile := filepath.Join(os.TempDir(), ".kawaiclaw_history")
+	if _, err := os.Stat(legacyHistory); err == nil {
+		historyFile = legacyHistory
+	}
 
 	rl, err := readline.NewEx(&readline.Config{
 		Prompt:          prompt,
-		HistoryFile:     filepath.Join(os.TempDir(), ".kawaiclaw_history"),
+		HistoryFile:     historyFile,
 		HistoryLimit:    100,
 		InterruptPrompt: "^C",
 		EOFPrompt:       "exit",
