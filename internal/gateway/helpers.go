@@ -114,7 +114,9 @@ func gatewayCmd(debug bool) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go agentLoop.Run(ctx)
+	go func() {
+		_ = agentLoop.Run(ctx)
+	}()
 
 	// Setup config file watcher for hot reload
 	configReloadChan, stopWatch := setupConfigWatcherPolling(configPath, debug)
@@ -269,7 +271,7 @@ func stopAndCleanupServices(
 	defer shutdownCancel()
 
 	if services.ChannelManager != nil {
-		services.ChannelManager.StopAll(shutdownCtx)
+		_ = services.ChannelManager.StopAll(shutdownCtx)
 	}
 	if services.DeviceService != nil {
 		services.DeviceService.Stop()

@@ -17,7 +17,7 @@ func onboard() {
 		fmt.Printf("Config already exists at %s\n", configPath)
 		fmt.Print("Overwrite? (y/n): ")
 		var response string
-		fmt.Scanln(&response)
+		_, _ = fmt.Scanln(&response)
 		if response != "y" {
 			fmt.Println("Aborted.")
 			return
@@ -56,7 +56,7 @@ func createWorkspaceTemplates(workspace string) {
 func copyEmbeddedToTarget(targetDir string) error {
 	// Ensure target directory exists
 	if err := os.MkdirAll(targetDir, 0o755); err != nil {
-		return fmt.Errorf("Failed to create target directory: %w", err)
+		return fmt.Errorf("failed to create target directory: %w", err)
 	}
 
 	// Walk through all files in embed.FS
@@ -73,12 +73,12 @@ func copyEmbeddedToTarget(targetDir string) error {
 		// Read embedded file
 		data, err := embeddedFiles.ReadFile(path)
 		if err != nil {
-			return fmt.Errorf("Failed to read embedded file %s: %w", path, err)
+			return fmt.Errorf("failed to read embedded file %s: %w", path, err)
 		}
 
 		new_path, err := filepath.Rel("workspace", path)
 		if err != nil {
-			return fmt.Errorf("Failed to get relative path for %s: %v\n", path, err)
+			return fmt.Errorf("failed to get relative path for %s: %w", path, err)
 		}
 
 		// Build target file path
@@ -86,7 +86,7 @@ func copyEmbeddedToTarget(targetDir string) error {
 
 		// Ensure target file's directory exists
 		if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
-			return fmt.Errorf("Failed to create directory %s: %w", filepath.Dir(targetPath), err)
+			return fmt.Errorf("failed to create directory %s: %w", filepath.Dir(targetPath), err)
 		}
 
 		// Write file

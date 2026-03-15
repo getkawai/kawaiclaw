@@ -18,7 +18,7 @@ var configPath = ""
 func initTest(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath = filepath.Join(tmpDir, "config.json")
-	_ = os.Setenv("KAWAICLAW_CONFIG", configPath)
+	t.Setenv("KAWAICLAW_CONFIG", configPath)
 }
 
 // captureStdout captures stdout during the execution of fn and returns the captured output
@@ -29,11 +29,11 @@ func captureStdout(fn func()) string {
 
 	fn()
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = oldStdout
 
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, _ = io.Copy(&buf, r)
 	return buf.String()
 }
 

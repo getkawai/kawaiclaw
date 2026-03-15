@@ -17,6 +17,10 @@ import (
 
 const skillsSearchMaxResults = 20
 
+func GetBuiltinSkillsDir(globalDir string) string {
+	return filepath.Join(globalDir, "kawaiclaw", "skills")
+}
+
 func skillsListCmd(loader *skills.SkillsLoader) {
 	allSkills := loader.ListSkills()
 
@@ -71,7 +75,7 @@ func skillsInstallFromRegistry(cfg *config.Config, registryName, slug string) er
 
 	registry := registryMgr.GetRegistry(registryName)
 	if registry == nil {
-		return fmt.Errorf("✗  registry '%s' not found or not enabled. check your config.json.", registryName)
+		return fmt.Errorf("✗  registry '%s' not found or not enabled; check your config.json", registryName)
 	}
 
 	workspace := cfg.WorkspacePath()
@@ -103,7 +107,7 @@ func skillsInstallFromRegistry(cfg *config.Config, registryName, slug string) er
 			fmt.Printf("\u2717 Failed to remove partial install: %v\n", rmErr)
 		}
 
-		return fmt.Errorf("\u2717 Skill '%s' is flagged as malicious and cannot be installed.\n", slug)
+		return fmt.Errorf("\u2717 Skill '%s' is flagged as malicious and cannot be installed", slug)
 	}
 
 	if result.IsSuspicious {
@@ -130,7 +134,8 @@ func skillsRemoveCmd(installer *skills.SkillInstaller, skillName string) {
 }
 
 func skillsInstallBuiltinCmd(workspace string) {
-	builtinSkillsDir := "./kawaiclaw/skills"
+	globalDir := filepath.Dir(internal.GetConfigPath())
+	builtinSkillsDir := GetBuiltinSkillsDir(globalDir)
 	workspaceSkillsDir := filepath.Join(workspace, "skills")
 
 	fmt.Printf("Copying builtin skills to workspace...\n")
@@ -166,12 +171,12 @@ func skillsInstallBuiltinCmd(workspace string) {
 }
 
 func skillsListBuiltinCmd() {
-	cfg, err := internal.LoadConfig()
-	if err != nil {
+	if _, err := internal.LoadConfig(); err != nil {
 		fmt.Printf("Error loading config: %v\n", err)
 		return
 	}
-	builtinSkillsDir := filepath.Join(filepath.Dir(cfg.WorkspacePath()), "kawaiclaw", "skills")
+	globalDir := filepath.Dir(internal.GetConfigPath())
+	builtinSkillsDir := GetBuiltinSkillsDir(globalDir)
 
 	fmt.Println("\nAvailable Builtin Skills:")
 	fmt.Println("-----------------------")
@@ -292,13 +297,17 @@ func copyDirectory(src, dst string) error {
 		if err != nil {
 			return err
 		}
-		defer srcFile.Close()
+		defer func() {
+			_ = srcFile.Close()
+		}()
 
 		dstFile, err := os.OpenFile(dstPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, info.Mode())
 		if err != nil {
 			return err
 		}
-		defer dstFile.Close()
+		defer func() {
+			_ = dstFile.Close()
+		}()
 
 		_, err = io.Copy(dstFile, srcFile)
 		return err

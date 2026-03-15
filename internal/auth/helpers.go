@@ -254,7 +254,9 @@ func fetchGoogleUserEmail(accessToken string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -374,7 +376,9 @@ func authLogoutCmd(provider string) error {
 			case "google-antigravity", "antigravity":
 				appCfg.Providers.Antigravity.AuthMethod = ""
 			}
-			config.SaveConfig(internal.GetConfigPath(), appCfg)
+			if err := config.SaveConfig(internal.GetConfigPath(), appCfg); err != nil {
+				return fmt.Errorf("save config: %w", err)
+			}
 		}
 
 		fmt.Printf("Logged out from %s\n", provider)
@@ -396,7 +400,9 @@ func authLogoutCmd(provider string) error {
 		appCfg.Providers.OpenAI.AuthMethod = ""
 		appCfg.Providers.Anthropic.AuthMethod = ""
 		appCfg.Providers.Antigravity.AuthMethod = ""
-		config.SaveConfig(internal.GetConfigPath(), appCfg)
+		if err := config.SaveConfig(internal.GetConfigPath(), appCfg); err != nil {
+			return fmt.Errorf("save config: %w", err)
+		}
 	}
 
 	fmt.Println("Logged out from all providers")
@@ -460,7 +466,7 @@ func authModelsCmd() error {
 	cred, err := auth.GetCredential("google-antigravity")
 	if err != nil || cred == nil {
 		return fmt.Errorf(
-			"not logged in to Google Antigravity.\nrun: kawaiclaw auth login --provider google-antigravity",
+			"not logged in to Google Antigravity.\nRun: kawaiclaw auth login --provider google-antigravity",
 		)
 	}
 
