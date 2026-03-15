@@ -29,7 +29,7 @@ jobs:
         run: go generate ./...
 
       - name: Golangci Lint
-        uses: golangci/golangci-lint-action@5cd2e2f55ea0c6f2d0d2793bfa3e49ed63e01d1f # v9.1.0
+        uses: golangci/golangci-lint-action@e7fa5ac41e1cf5b7d48e45e42232ce7ada589601 # v9.1.0
         with:
           version: v2.10.1
 
@@ -51,7 +51,7 @@ jobs:
         run: go generate ./...
 
       - name: Run Govulncheck
-        uses: golang/govulncheck-action@562a84b415c8a6207d5fdd5bc74b0d2153796a48 # v1.0.4
+        uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee # v1.0.4
         with:
           go-package: ./...
           repo-checkout: false
