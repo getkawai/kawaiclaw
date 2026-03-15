@@ -79,10 +79,15 @@ func agentCmd(message, sessionKey, model string, debug bool) error {
 
 func interactiveMode(agentLoop *agent.AgentLoop, sessionKey string) {
 	prompt := fmt.Sprintf("%s You: ", internal.Logo)
+	legacyHistory := filepath.Join(os.TempDir(), ".picoclaw_history")
+	historyFile := filepath.Join(os.TempDir(), ".kawaiclaw_history")
+	if _, err := os.Stat(legacyHistory); err == nil {
+		historyFile = legacyHistory
+	}
 
 	rl, err := readline.NewEx(&readline.Config{
 		Prompt:          prompt,
-		HistoryFile:     filepath.Join(os.TempDir(), ".picoclaw_history"),
+		HistoryFile:     historyFile,
 		HistoryLimit:    100,
 		InterruptPrompt: "^C",
 		EOFPrompt:       "exit",
@@ -93,7 +98,9 @@ func interactiveMode(agentLoop *agent.AgentLoop, sessionKey string) {
 		simpleInteractiveMode(agentLoop, sessionKey)
 		return
 	}
-	defer rl.Close()
+	defer func() {
+		_ = rl.Close()
+	}()
 
 	for {
 		line, err := rl.Readline()
@@ -130,7 +137,7 @@ func interactiveMode(agentLoop *agent.AgentLoop, sessionKey string) {
 func simpleInteractiveMode(agentLoop *agent.AgentLoop, sessionKey string) {
 	reader := bufio.NewReader(os.Stdin)
 	for {
-		fmt.Print(fmt.Sprintf("%s You: ", internal.Logo))
+	fmt.Printf("%s You: ", internal.Logo)
 		line, err := reader.ReadString('\n')
 		if err != nil {
 			if err == io.EOF {

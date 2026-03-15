@@ -2,6 +2,7 @@ package skills
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -16,6 +17,10 @@ import (
 )
 
 const skillsSearchMaxResults = 20
+
+func GetBuiltinSkillsDir(globalDir string) string {
+	return filepath.Join(globalDir, "kawaiclaw", "skills")
+}
 
 func skillsListCmd(loader *skills.SkillsLoader) {
 	allSkills := loader.ListSkills()
@@ -71,7 +76,7 @@ func skillsInstallFromRegistry(cfg *config.Config, registryName, slug string) er
 
 	registry := registryMgr.GetRegistry(registryName)
 	if registry == nil {
-		return fmt.Errorf("✗  registry '%s' not found or not enabled. check your config.json.", registryName)
+		return fmt.Errorf("✗  registry '%s' not found or not enabled; check your config.json", registryName)
 	}
 
 	workspace := cfg.WorkspacePath()
@@ -103,7 +108,7 @@ func skillsInstallFromRegistry(cfg *config.Config, registryName, slug string) er
 			fmt.Printf("\u2717 Failed to remove partial install: %v\n", rmErr)
 		}
 
-		return fmt.Errorf("\u2717 Skill '%s' is flagged as malicious and cannot be installed.\n", slug)
+		return fmt.Errorf("\u2717 Skill '%s' is flagged as malicious and cannot be installed", slug)
 	}
 
 	if result.IsSuspicious {
@@ -129,11 +134,13 @@ func skillsRemoveCmd(installer *skills.SkillInstaller, skillName string) {
 	fmt.Printf("✓ Skill '%s' removed successfully!\n", skillName)
 }
 
-func skillsInstallBuiltinCmd(workspace string) {
-	builtinSkillsDir := "./picoclaw/skills"
+func skillsInstallBuiltinCmd(workspace string) error {
+	globalDir := filepath.Dir(internal.GetConfigPath())
+	builtinSkillsDir := GetBuiltinSkillsDir(globalDir)
 	workspaceSkillsDir := filepath.Join(workspace, "skills")
 
 	fmt.Printf("Copying builtin skills to workspace...\n")
+	var joinedErr error
 
 	skillsToInstall := []string{
 		"weather",
@@ -148,30 +155,38 @@ func skillsInstallBuiltinCmd(workspace string) {
 
 		if _, err := os.Stat(builtinPath); err != nil {
 			fmt.Printf("⊘ Builtin skill '%s' not found: %v\n", skillName, err)
+			joinedErr = errors.Join(joinedErr, err)
 			continue
 		}
 
 		if err := os.MkdirAll(workspacePath, 0o755); err != nil {
 			fmt.Printf("✗ Failed to create directory for %s: %v\n", skillName, err)
+			joinedErr = errors.Join(joinedErr, err)
 			continue
 		}
 
 		if err := copyDirectory(builtinPath, workspacePath); err != nil {
 			fmt.Printf("✗ Failed to copy %s: %v\n", skillName, err)
+			joinedErr = errors.Join(joinedErr, err)
 		}
+	}
+
+	if joinedErr != nil {
+		return joinedErr
 	}
 
 	fmt.Println("\n✓ All builtin skills installed!")
 	fmt.Println("Now you can use them in your workspace.")
+	return nil
 }
 
 func skillsListBuiltinCmd() {
-	cfg, err := internal.LoadConfig()
-	if err != nil {
+	if _, err := internal.LoadConfig(); err != nil {
 		fmt.Printf("Error loading config: %v\n", err)
 		return
 	}
-	builtinSkillsDir := filepath.Join(filepath.Dir(cfg.WorkspacePath()), "picoclaw", "skills")
+	globalDir := filepath.Dir(internal.GetConfigPath())
+	builtinSkillsDir := GetBuiltinSkillsDir(globalDir)
 
 	fmt.Println("\nAvailable Builtin Skills:")
 	fmt.Println("-----------------------")
@@ -202,7 +217,9 @@ func skillsListBuiltinCmd() {
 						if strings.Contains(firstLine, "description:") {
 							descLine := strings.Index(content[idx:], "\n")
 							if descLine > 0 {
-								description = strings.TrimSpace(content[idx+descLine : idx+descLine])
+								start := idx + 1
+								end := idx + descLine
+								description = strings.TrimSpace(content[start:end])
 							}
 						}
 					}
@@ -292,15 +309,22 @@ func copyDirectory(src, dst string) error {
 		if err != nil {
 			return err
 		}
-		defer srcFile.Close()
+		defer func() {
+			_ = srcFile.Close()
+		}()
 
 		dstFile, err := os.OpenFile(dstPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, info.Mode())
 		if err != nil {
 			return err
 		}
-		defer dstFile.Close()
 
-		_, err = io.Copy(dstFile, srcFile)
-		return err
+		if _, err = io.Copy(dstFile, srcFile); err != nil {
+			_ = dstFile.Close()
+			return err
+		}
+		if err := dstFile.Close(); err != nil {
+			return err
+		}
+		return nil
 	})
 }

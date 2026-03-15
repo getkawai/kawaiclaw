@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -114,7 +115,10 @@ func gatewayCmd(debug bool) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go agentLoop.Run(ctx)
+	agentErrCh := make(chan error, 1)
+	go func() {
+		agentErrCh <- agentLoop.Run(ctx)
+	}()
 
 	// Setup config file watcher for hot reload
 	configReloadChan, stopWatch := setupConfigWatcherPolling(configPath, debug)
@@ -136,6 +140,13 @@ func gatewayCmd(debug bool) error {
 			if err != nil {
 				logger.Errorf("Config reload failed: %v", err)
 			}
+		case err := <-agentErrCh:
+			if errors.Is(err, context.Canceled) {
+				return nil
+			}
+			logger.Errorf("Agent loop stopped: %v", err)
+			shutdownGateway(services, agentLoop, provider, true)
+			return err
 		}
 	}
 }
@@ -269,7 +280,9 @@ func stopAndCleanupServices(
 	defer shutdownCancel()
 
 	if services.ChannelManager != nil {
-		services.ChannelManager.StopAll(shutdownCtx)
+		if err := services.ChannelManager.StopAll(shutdownCtx); err != nil {
+			logger.Errorf("Error stopping channels: %v", err)
+		}
 	}
 	if services.DeviceService != nil {
 		services.DeviceService.Stop()

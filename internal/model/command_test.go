@@ -18,22 +18,28 @@ var configPath = ""
 func initTest(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath = filepath.Join(tmpDir, "config.json")
-	_ = os.Setenv("PICOCLAW_CONFIG", configPath)
+	t.Setenv("KAWAICLAW_CONFIG", configPath)
 }
 
 // captureStdout captures stdout during the execution of fn and returns the captured output
-func captureStdout(fn func()) string {
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
 	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
 	os.Stdout = w
+	defer func() {
+		os.Stdout = oldStdout
+	}()
 
 	fn()
 
-	w.Close()
-	os.Stdout = oldStdout
+	require.NoError(t, w.Close())
 
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, err = io.Copy(&buf, r)
+	require.NoError(t, err)
+	require.NoError(t, r.Close())
 	return buf.String()
 }
 
@@ -70,7 +76,7 @@ func TestShowCurrentModel_WithDefaultModel(t *testing.T) {
 		},
 	}
 
-	output := captureStdout(func() {
+	output := captureStdout(t, func() {
 		showCurrentModel(cfg)
 	})
 
@@ -93,7 +99,7 @@ func TestShowCurrentModel_NoDefaultModel(t *testing.T) {
 		},
 	}
 
-	output := captureStdout(func() {
+	output := captureStdout(t, func() {
 		showCurrentModel(cfg)
 	})
 
@@ -111,7 +117,7 @@ func TestShowCurrentModel_BackwardCompatibility(t *testing.T) {
 		ModelList: []config.ModelConfig{},
 	}
 
-	output := captureStdout(func() {
+	output := captureStdout(t, func() {
 		showCurrentModel(cfg)
 	})
 
@@ -123,7 +129,7 @@ func TestListAvailableModels_Empty(t *testing.T) {
 		ModelList: []config.ModelConfig{},
 	}
 
-	output := captureStdout(func() {
+	output := captureStdout(t, func() {
 		listAvailableModels(cfg)
 	})
 
@@ -144,7 +150,7 @@ func TestListAvailableModels_WithModels(t *testing.T) {
 		},
 	}
 
-	output := captureStdout(func() {
+	output := captureStdout(t, func() {
 		listAvailableModels(cfg)
 	})
 
@@ -169,7 +175,7 @@ func TestSetDefaultModel_ValidModel(t *testing.T) {
 		},
 	}
 
-	output := captureStdout(func() {
+	output := captureStdout(t, func() {
 		err := setDefaultModel(configPath, cfg, "new-model")
 		assert.NoError(t, err)
 	})
@@ -197,7 +203,7 @@ func TestSetDefaultModel_LegacyModelField(t *testing.T) {
 		},
 	}
 
-	output := captureStdout(func() {
+	output := captureStdout(t, func() {
 		err := setDefaultModel(configPath, cfg, "new-model")
 		assert.NoError(t, err)
 	})
@@ -301,7 +307,7 @@ func TestModelCommandExecution_Show(t *testing.T) {
 
 	cmd := NewModelCommand()
 
-	output := captureStdout(func() {
+	output := captureStdout(t, func() {
 		err = cmd.RunE(cmd, []string{})
 		assert.NoError(t, err)
 	})
@@ -329,7 +335,7 @@ func TestModelCommandExecution_Set(t *testing.T) {
 
 	cmd := NewModelCommand()
 
-	output := captureStdout(func() {
+	output := captureStdout(t, func() {
 		err = cmd.RunE(cmd, []string{"new-model"})
 		assert.NoError(t, err)
 	})
@@ -359,7 +365,7 @@ func TestListAvailableModels_MarkerLogic(t *testing.T) {
 		},
 	}
 
-	output := captureStdout(func() {
+	output := captureStdout(t, func() {
 		listAvailableModels(cfg)
 	})
 
