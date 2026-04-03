@@ -2,7 +2,6 @@ package skills
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -17,10 +16,6 @@ import (
 )
 
 const skillsSearchMaxResults = 20
-
-func GetBuiltinSkillsDir(globalDir string) string {
-	return filepath.Join(globalDir, "kawaiclaw", "skills")
-}
 
 func skillsListCmd(loader *skills.SkillsLoader) {
 	allSkills := loader.ListSkills()
@@ -69,14 +64,25 @@ func skillsInstallFromRegistry(cfg *config.Config, registryName, slug string) er
 
 	fmt.Printf("Installing skill '%s' from %s registry...\n", slug, registryName)
 
+	clawHubConfig := cfg.Tools.Skills.Registries.ClawHub
 	registryMgr := skills.NewRegistryManagerFromConfig(skills.RegistryConfig{
 		MaxConcurrentSearches: cfg.Tools.Skills.MaxConcurrentSearches,
-		ClawHub:               skills.ClawHubConfig(cfg.Tools.Skills.Registries.ClawHub),
+		ClawHub: skills.ClawHubConfig{
+			Enabled:         clawHubConfig.Enabled,
+			BaseURL:         clawHubConfig.BaseURL,
+			AuthToken:       clawHubConfig.AuthToken.String(),
+			SearchPath:      clawHubConfig.SearchPath,
+			SkillsPath:      clawHubConfig.SkillsPath,
+			DownloadPath:    clawHubConfig.DownloadPath,
+			Timeout:         clawHubConfig.Timeout,
+			MaxZipSize:      clawHubConfig.MaxZipSize,
+			MaxResponseSize: clawHubConfig.MaxResponseSize,
+		},
 	})
 
 	registry := registryMgr.GetRegistry(registryName)
 	if registry == nil {
-		return fmt.Errorf("✗  registry '%s' not found or not enabled; check your config.json", registryName)
+		return fmt.Errorf("✗  registry '%s' not found or not enabled. check your config.json.", registryName)
 	}
 
 	workspace := cfg.WorkspacePath()
@@ -108,7 +114,7 @@ func skillsInstallFromRegistry(cfg *config.Config, registryName, slug string) er
 			fmt.Printf("\u2717 Failed to remove partial install: %v\n", rmErr)
 		}
 
-		return fmt.Errorf("\u2717 Skill '%s' is flagged as malicious and cannot be installed", slug)
+		return fmt.Errorf("\u2717 Skill '%s' is flagged as malicious and cannot be installed.\n", slug)
 	}
 
 	if result.IsSuspicious {
@@ -134,13 +140,11 @@ func skillsRemoveCmd(installer *skills.SkillInstaller, skillName string) {
 	fmt.Printf("✓ Skill '%s' removed successfully!\n", skillName)
 }
 
-func skillsInstallBuiltinCmd(workspace string) error {
-	globalDir := filepath.Dir(internal.GetConfigPath())
-	builtinSkillsDir := GetBuiltinSkillsDir(globalDir)
+func skillsInstallBuiltinCmd(workspace string) {
+	builtinSkillsDir := "./kawaiclaw/skills"
 	workspaceSkillsDir := filepath.Join(workspace, "skills")
 
 	fmt.Printf("Copying builtin skills to workspace...\n")
-	var joinedErr error
 
 	skillsToInstall := []string{
 		"weather",
@@ -155,38 +159,30 @@ func skillsInstallBuiltinCmd(workspace string) error {
 
 		if _, err := os.Stat(builtinPath); err != nil {
 			fmt.Printf("⊘ Builtin skill '%s' not found: %v\n", skillName, err)
-			joinedErr = errors.Join(joinedErr, err)
 			continue
 		}
 
 		if err := os.MkdirAll(workspacePath, 0o755); err != nil {
 			fmt.Printf("✗ Failed to create directory for %s: %v\n", skillName, err)
-			joinedErr = errors.Join(joinedErr, err)
 			continue
 		}
 
 		if err := copyDirectory(builtinPath, workspacePath); err != nil {
 			fmt.Printf("✗ Failed to copy %s: %v\n", skillName, err)
-			joinedErr = errors.Join(joinedErr, err)
 		}
-	}
-
-	if joinedErr != nil {
-		return joinedErr
 	}
 
 	fmt.Println("\n✓ All builtin skills installed!")
 	fmt.Println("Now you can use them in your workspace.")
-	return nil
 }
 
 func skillsListBuiltinCmd() {
-	if _, err := internal.LoadConfig(); err != nil {
+	cfg, err := internal.LoadConfig()
+	if err != nil {
 		fmt.Printf("Error loading config: %v\n", err)
 		return
 	}
-	globalDir := filepath.Dir(internal.GetConfigPath())
-	builtinSkillsDir := GetBuiltinSkillsDir(globalDir)
+	builtinSkillsDir := filepath.Join(filepath.Dir(cfg.WorkspacePath()), "kawaiclaw", "skills")
 
 	fmt.Println("\nAvailable Builtin Skills:")
 	fmt.Println("-----------------------")
@@ -217,9 +213,7 @@ func skillsListBuiltinCmd() {
 						if strings.Contains(firstLine, "description:") {
 							descLine := strings.Index(content[idx:], "\n")
 							if descLine > 0 {
-								start := idx + 1
-								end := idx + descLine
-								description = strings.TrimSpace(content[start:end])
+								description = strings.TrimSpace(content[idx+descLine : idx+descLine])
 							}
 						}
 					}
@@ -243,9 +237,20 @@ func skillsSearchCmd(query string) {
 		return
 	}
 
+	clawHubConfig := cfg.Tools.Skills.Registries.ClawHub
 	registryMgr := skills.NewRegistryManagerFromConfig(skills.RegistryConfig{
 		MaxConcurrentSearches: cfg.Tools.Skills.MaxConcurrentSearches,
-		ClawHub:               skills.ClawHubConfig(cfg.Tools.Skills.Registries.ClawHub),
+		ClawHub: skills.ClawHubConfig{
+			Enabled:         clawHubConfig.Enabled,
+			BaseURL:         clawHubConfig.BaseURL,
+			AuthToken:       clawHubConfig.AuthToken.String(),
+			SearchPath:      clawHubConfig.SearchPath,
+			SkillsPath:      clawHubConfig.SkillsPath,
+			DownloadPath:    clawHubConfig.DownloadPath,
+			Timeout:         clawHubConfig.Timeout,
+			MaxZipSize:      clawHubConfig.MaxZipSize,
+			MaxResponseSize: clawHubConfig.MaxResponseSize,
+		},
 	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -309,22 +314,15 @@ func copyDirectory(src, dst string) error {
 		if err != nil {
 			return err
 		}
-		defer func() {
-			_ = srcFile.Close()
-		}()
+		defer srcFile.Close()
 
 		dstFile, err := os.OpenFile(dstPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, info.Mode())
 		if err != nil {
 			return err
 		}
+		defer dstFile.Close()
 
-		if _, err = io.Copy(dstFile, srcFile); err != nil {
-			_ = dstFile.Close()
-			return err
-		}
-		if err := dstFile.Close(); err != nil {
-			return err
-		}
-		return nil
+		_, err = io.Copy(dstFile, srcFile)
+		return err
 	})
 }

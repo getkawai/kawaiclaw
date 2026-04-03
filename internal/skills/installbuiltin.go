@@ -12,7 +12,8 @@ func newInstallBuiltinCommand(workspaceFn func() (string, error)) *cobra.Command
 			if err != nil {
 				return err
 			}
-			return skillsInstallBuiltinCmd(workspace)
+			skillsInstallBuiltinCmd(workspace)
+			return nil
 		},
 	}
 

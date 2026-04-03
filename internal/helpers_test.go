@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/sipeed/picoclaw/pkg/config"
 )
 
 func TestGetConfigPath(t *testing.T) {
@@ -20,8 +22,7 @@ func TestGetConfigPath(t *testing.T) {
 }
 
 func TestGetConfigPath_WithKAWAICLAW_HOME(t *testing.T) {
-	t.Setenv("KAWAICLAW_CONFIG", "")
-	t.Setenv("KAWAICLAW_HOME", "/custom/kawaiclaw")
+	t.Setenv(config.EnvHome, "/custom/kawaiclaw")
 	t.Setenv("HOME", "/tmp/home")
 
 	got := GetConfigPath()
@@ -31,33 +32,8 @@ func TestGetConfigPath_WithKAWAICLAW_HOME(t *testing.T) {
 }
 
 func TestGetConfigPath_WithKAWAICLAW_CONFIG(t *testing.T) {
-	t.Setenv("KAWAICLAW_HOME", "")
 	t.Setenv("KAWAICLAW_CONFIG", "/custom/config.json")
-	t.Setenv("HOME", "/tmp/home")
-
-	got := GetConfigPath()
-	want := "/custom/config.json"
-
-	assert.Equal(t, want, got)
-}
-
-func TestGetConfigPath_WithPICOCLAW_HOME(t *testing.T) {
-	t.Setenv("KAWAICLAW_CONFIG", "")
-	t.Setenv("KAWAICLAW_HOME", "")
-	t.Setenv("PICOCLAW_HOME", "/custom/picoclaw")
-	t.Setenv("HOME", "/tmp/home")
-
-	got := GetConfigPath()
-	want := filepath.Join("/custom/picoclaw", "config.json")
-
-	assert.Equal(t, want, got)
-}
-
-func TestGetConfigPath_WithPICOCLAW_CONFIG(t *testing.T) {
-	t.Setenv("KAWAICLAW_CONFIG", "")
-	t.Setenv("KAWAICLAW_HOME", "")
-	t.Setenv("PICOCLAW_CONFIG", "/custom/config.json")
-	t.Setenv("PICOCLAW_HOME", "/custom/picoclaw")
+	t.Setenv(config.EnvHome, "/custom/kawaiclaw")
 	t.Setenv("HOME", "/tmp/home")
 
 	got := GetConfigPath()

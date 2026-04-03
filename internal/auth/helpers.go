@@ -56,9 +56,6 @@ func authLoginOpenAI(useDeviceCode bool) error {
 
 	appCfg, err := internal.LoadConfig()
 	if err == nil {
-		// Update Providers (legacy format)
-		appCfg.Providers.OpenAI.AuthMethod = "oauth"
-
 		// Update or add openai in ModelList
 		foundOpenAI := false
 		for i := range appCfg.ModelList {
@@ -71,7 +68,7 @@ func authLoginOpenAI(useDeviceCode bool) error {
 
 		// If no openai in ModelList, add it
 		if !foundOpenAI {
-			appCfg.ModelList = append(appCfg.ModelList, config.ModelConfig{
+			appCfg.ModelList = append(appCfg.ModelList, &config.ModelConfig{
 				ModelName:  "gpt-5.4",
 				Model:      "openai/gpt-5.4",
 				AuthMethod: "oauth",
@@ -130,9 +127,6 @@ func authLoginGoogleAntigravity() error {
 
 	appCfg, err := internal.LoadConfig()
 	if err == nil {
-		// Update Providers (legacy format, for backward compatibility)
-		appCfg.Providers.Antigravity.AuthMethod = "oauth"
-
 		// Update or add antigravity in ModelList
 		foundAntigravity := false
 		for i := range appCfg.ModelList {
@@ -145,7 +139,7 @@ func authLoginGoogleAntigravity() error {
 
 		// If no antigravity in ModelList, add it
 		if !foundAntigravity {
-			appCfg.ModelList = append(appCfg.ModelList, config.ModelConfig{
+			appCfg.ModelList = append(appCfg.ModelList, &config.ModelConfig{
 				ModelName:  "gemini-flash",
 				Model:      "antigravity/gemini-3-flash",
 				AuthMethod: "oauth",
@@ -210,8 +204,6 @@ func authLoginAnthropicSetupToken() error {
 
 	appCfg, err := internal.LoadConfig()
 	if err == nil {
-		appCfg.Providers.Anthropic.AuthMethod = "oauth"
-
 		found := false
 		for i := range appCfg.ModelList {
 			if isAnthropicModel(appCfg.ModelList[i].Model) {
@@ -221,7 +213,7 @@ func authLoginAnthropicSetupToken() error {
 			}
 		}
 		if !found {
-			appCfg.ModelList = append(appCfg.ModelList, config.ModelConfig{
+			appCfg.ModelList = append(appCfg.ModelList, &config.ModelConfig{
 				ModelName:  defaultAnthropicModel,
 				Model:      "anthropic/" + defaultAnthropicModel,
 				AuthMethod: "oauth",
@@ -254,9 +246,7 @@ func fetchGoogleUserEmail(accessToken string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
+	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -289,7 +279,6 @@ func authLoginPasteToken(provider string) error {
 	if err == nil {
 		switch provider {
 		case "anthropic":
-			appCfg.Providers.Anthropic.AuthMethod = "token"
 			// Update ModelList
 			found := false
 			for i := range appCfg.ModelList {
@@ -300,7 +289,7 @@ func authLoginPasteToken(provider string) error {
 				}
 			}
 			if !found {
-				appCfg.ModelList = append(appCfg.ModelList, config.ModelConfig{
+				appCfg.ModelList = append(appCfg.ModelList, &config.ModelConfig{
 					ModelName:  defaultAnthropicModel,
 					Model:      "anthropic/" + defaultAnthropicModel,
 					AuthMethod: "token",
@@ -308,7 +297,6 @@ func authLoginPasteToken(provider string) error {
 				appCfg.Agents.Defaults.ModelName = defaultAnthropicModel
 			}
 		case "openai":
-			appCfg.Providers.OpenAI.AuthMethod = "token"
 			// Update ModelList
 			found := false
 			for i := range appCfg.ModelList {
@@ -319,7 +307,7 @@ func authLoginPasteToken(provider string) error {
 				}
 			}
 			if !found {
-				appCfg.ModelList = append(appCfg.ModelList, config.ModelConfig{
+				appCfg.ModelList = append(appCfg.ModelList, &config.ModelConfig{
 					ModelName:  "gpt-5.4",
 					Model:      "openai/gpt-5.4",
 					AuthMethod: "token",
@@ -367,18 +355,7 @@ func authLogoutCmd(provider string) error {
 					}
 				}
 			}
-			// Clear AuthMethod in Providers (legacy)
-			switch provider {
-			case "openai":
-				appCfg.Providers.OpenAI.AuthMethod = ""
-			case "anthropic":
-				appCfg.Providers.Anthropic.AuthMethod = ""
-			case "google-antigravity", "antigravity":
-				appCfg.Providers.Antigravity.AuthMethod = ""
-			}
-			if err := config.SaveConfig(internal.GetConfigPath(), appCfg); err != nil {
-				return fmt.Errorf("save config: %w", err)
-			}
+			config.SaveConfig(internal.GetConfigPath(), appCfg)
 		}
 
 		fmt.Printf("Logged out from %s\n", provider)
@@ -396,13 +373,7 @@ func authLogoutCmd(provider string) error {
 		for i := range appCfg.ModelList {
 			appCfg.ModelList[i].AuthMethod = ""
 		}
-		// Clear all AuthMethods in Providers (legacy)
-		appCfg.Providers.OpenAI.AuthMethod = ""
-		appCfg.Providers.Anthropic.AuthMethod = ""
-		appCfg.Providers.Antigravity.AuthMethod = ""
-		if err := config.SaveConfig(internal.GetConfigPath(), appCfg); err != nil {
-			return fmt.Errorf("save config: %w", err)
-		}
+		config.SaveConfig(internal.GetConfigPath(), appCfg)
 	}
 
 	fmt.Println("Logged out from all providers")
@@ -466,7 +437,7 @@ func authModelsCmd() error {
 	cred, err := auth.GetCredential("google-antigravity")
 	if err != nil || cred == nil {
 		return fmt.Errorf(
-			"not logged in to Google Antigravity.\nRun: kawaiclaw auth login --provider google-antigravity",
+			"not logged in to Google Antigravity.\nrun: kawaiclaw auth login --provider google-antigravity",
 		)
 	}
 

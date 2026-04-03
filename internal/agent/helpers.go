@@ -23,14 +23,16 @@ func agentCmd(message, sessionKey, model string, debug bool) error {
 		sessionKey = "cli:default"
 	}
 
-	if debug {
-		logger.SetLevel(logger.DEBUG)
-		fmt.Println("🔍 Debug mode enabled")
-	}
-
 	cfg, err := internal.LoadConfig()
 	if err != nil {
 		return fmt.Errorf("error loading config: %w", err)
+	}
+
+	logger.ConfigureFromEnv()
+
+	if debug {
+		logger.SetLevel(logger.DEBUG)
+		fmt.Println("🔍 Debug mode enabled")
 	}
 
 	if model != "" {
@@ -79,15 +81,10 @@ func agentCmd(message, sessionKey, model string, debug bool) error {
 
 func interactiveMode(agentLoop *agent.AgentLoop, sessionKey string) {
 	prompt := fmt.Sprintf("%s You: ", internal.Logo)
-	legacyHistory := filepath.Join(os.TempDir(), ".picoclaw_history")
-	historyFile := filepath.Join(os.TempDir(), ".kawaiclaw_history")
-	if _, err := os.Stat(legacyHistory); err == nil {
-		historyFile = legacyHistory
-	}
 
 	rl, err := readline.NewEx(&readline.Config{
 		Prompt:          prompt,
-		HistoryFile:     historyFile,
+		HistoryFile:     filepath.Join(os.TempDir(), ".kawaiclaw_history"),
 		HistoryLimit:    100,
 		InterruptPrompt: "^C",
 		EOFPrompt:       "exit",
@@ -98,9 +95,7 @@ func interactiveMode(agentLoop *agent.AgentLoop, sessionKey string) {
 		simpleInteractiveMode(agentLoop, sessionKey)
 		return
 	}
-	defer func() {
-		_ = rl.Close()
-	}()
+	defer rl.Close()
 
 	for {
 		line, err := rl.Readline()
@@ -137,7 +132,7 @@ func interactiveMode(agentLoop *agent.AgentLoop, sessionKey string) {
 func simpleInteractiveMode(agentLoop *agent.AgentLoop, sessionKey string) {
 	reader := bufio.NewReader(os.Stdin)
 	for {
-	fmt.Printf("%s You: ", internal.Logo)
+		fmt.Print(fmt.Sprintf("%s You: ", internal.Logo))
 		line, err := reader.ReadString('\n')
 		if err != nil {
 			if err == io.EOF {

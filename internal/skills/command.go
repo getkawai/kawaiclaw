@@ -31,7 +31,7 @@ func NewSkillsCommand() *cobra.Command {
 			d.workspace = cfg.WorkspacePath()
 			installer, err := skills.NewSkillInstaller(
 				d.workspace,
-				cfg.Tools.Skills.Github.Token,
+				cfg.Tools.Skills.Github.Token.String(),
 				cfg.Tools.Skills.Github.Proxy,
 			)
 			if err != nil {
@@ -42,7 +42,7 @@ func NewSkillsCommand() *cobra.Command {
 			// get global config directory and builtin skills directory
 			globalDir := filepath.Dir(internal.GetConfigPath())
 			globalSkillsDir := filepath.Join(globalDir, "skills")
-			builtinSkillsDir := GetBuiltinSkillsDir(globalDir)
+			builtinSkillsDir := filepath.Join(globalDir, "kawaiclaw", "skills")
 			d.skillsLoader = skills.NewSkillsLoader(d.workspace, globalSkillsDir, builtinSkillsDir)
 
 			return nil
